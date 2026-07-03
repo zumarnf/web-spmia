@@ -1,0 +1,5 @@
+# Supabase CLI local artifacts — generated on `supabase start` / link.
+# The schema (migrations/, seed.sql, README.md) stays tracked; these do not.
+.branches
+.temp
+.env

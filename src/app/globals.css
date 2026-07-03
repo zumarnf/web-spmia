@@ -1,0 +1,179 @@
+@import "tailwindcss";
+
+/* Tailwind v4 CSS-first config. Premium design system for SPM Nexus. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  /* Warm-tinted neutrals so the surface feels paper-like, not sterile white. */
+  --background: #f7f6f3;
+  --surface: #ffffff;
+  --surface-2: #fbfaf8;
+  --foreground: #1c1b1a;
+  --muted: #78716c;
+  --muted-2: #a8a29e;
+
+  /* One considered accent (institutional red) + a calm supporting blue. */
+  --primary: #b80f29;
+  --primary-foreground: #ffffff;
+  --secondary: #1f4e79;
+  --secondary-foreground: #ffffff;
+
+  --success: #166534;
+  --warning: #92400e;
+  --danger: #b42318;
+
+  --border: #e9e6e1;
+  --border-strong: #ddd8d1;
+  --ring: #b80f29;
+  --input: #ffffff;
+
+  --radius: 0.875rem;
+  --radius-sm: 0.5rem;
+  --radius-lg: 1.25rem;
+
+  /* Tinted, multi-layer shadows that suggest a single warm light source. */
+  --shadow-sm: 0 1px 2px -1px rgb(28 27 26 / 0.08), 0 1px 3px rgb(28 27 26 / 0.05);
+  --shadow-md:
+    0 2px 4px -2px rgb(28 27 26 / 0.08), 0 8px 24px -8px rgb(28 27 26 / 0.12);
+  --shadow-lg:
+    0 4px 8px -4px rgb(28 27 26 / 0.1), 0 24px 48px -16px rgb(28 27 26 / 0.18);
+  --shadow-primary: 0 8px 24px -10px rgb(184 15 41 / 0.45);
+}
+
+.dark {
+  --background: #0c0b0e;
+  --surface: #16151a;
+  --surface-2: #1c1b21;
+  --foreground: #f1eeec;
+  --muted: #a3a0a8;
+  --muted-2: #6f6c75;
+
+  --primary: #f0405a;
+  --primary-foreground: #ffffff;
+  --secondary: #5b9bd9;
+  --secondary-foreground: #0c0b0e;
+
+  --success: #34d399;
+  --warning: #fbbf24;
+  --danger: #f87171;
+
+  --border: #2a2930;
+  --border-strong: #38363f;
+  --ring: #f0405a;
+  --input: #1c1b21;
+
+  --shadow-sm: 0 1px 2px -1px rgb(0 0 0 / 0.5), 0 1px 3px rgb(0 0 0 / 0.4);
+  --shadow-md: 0 2px 4px -2px rgb(0 0 0 / 0.5), 0 8px 24px -8px rgb(0 0 0 / 0.6);
+  --shadow-lg: 0 4px 8px -4px rgb(0 0 0 / 0.5), 0 24px 48px -16px rgb(0 0 0 / 0.7);
+  --shadow-primary: 0 8px 28px -10px rgb(240 64 90 / 0.5);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-2: var(--muted-2);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+
+  --radius-base: var(--radius);
+  --radius-sm: var(--radius-sm);
+  --radius-lg: var(--radius-lg);
+
+  --shadow-card: var(--shadow-sm);
+  --shadow-elevated: var(--shadow-md);
+  --shadow-floating: var(--shadow-lg);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  --animate-fade-in: fade-in 0.25s ease-out both;
+  --animate-pop-in: pop-in 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  /* Off-white base with a faint warm ambient glow — never a flat slab of colour. */
+  background-color: var(--background);
+  background-image:
+    radial-gradient(60rem 40rem at 100% -10%, rgb(184 15 41 / 0.04), transparent 60%),
+    radial-gradient(50rem 40rem at -10% 0%, rgb(31 78 121 / 0.05), transparent 55%);
+  background-attachment: fixed;
+  color: var(--foreground);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.dark body {
+  background-image:
+    radial-gradient(60rem 40rem at 100% -10%, rgb(240 64 90 / 0.07), transparent 60%),
+    radial-gradient(50rem 40rem at -10% 0%, rgb(91 155 217 / 0.06), transparent 55%);
+}
+
+/* Tabular figures everywhere numbers carry meaning in a data app. */
+table,
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Tighter, more intentional display headings. */
+h1,
+h2 {
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Calmer, branded scrollbar. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
