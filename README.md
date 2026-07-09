@@ -25,8 +25,10 @@ kontributor (dosen & mahasiswa).
 ## Fitur Utama
 
 - **Autentikasi** email/password via Supabase Auth, dengan guard 2 lapis (middleware + layout).
-- **Peran pengguna**: `admin` (akses penuh, termasuk hapus) dan `prodi` (baca/tambah/ubah).
+- **Peran pengguna**: `admin` (akses penuh, termasuk hapus) dan `prodi` (baca/tambah/ubah, terbatas pada program studinya sendiri via RLS).
 - **Data master**: Dosen, Mahasiswa, Program Studi, Jabatan (+ riwayat jabatan).
+- **Manajemen pengguna** (admin): kelola profil, peran, dan penempatan program studi.
+- **Sesi aman**: auto-redirect ke login saat sesi kadaluarsa (real-time & setelah submit).
 - **Kegiatan Tridharma**: Penelitian, Pengabdian, Prestasi, Publikasi.
 - **Kontributor kegiatan**: tambah/hapus dosen & mahasiswa dengan aturan **satu ketua** per
   kegiatan (dijaga di level database & aplikasi).
@@ -43,7 +45,7 @@ kontributor (dosen & mahasiswa).
 | Framework | Next.js 16 (App Router, React Server Components, React Compiler) |
 | UI | React 19, Tailwind CSS v4, lucide-react (ikon), sonner (toast) |
 | Form & Validasi | react-hook-form, Zod |
-| Tabel | @tanstack/react-table |
+| Tabel | Kustom (`components/data-table`) |
 | 3D/Animasi | three.js |
 | Backend/DB | Supabase (Auth, PostgreSQL, RLS), @supabase/ssr |
 | Testing | Vitest, @vitest/coverage-v8 |
@@ -165,10 +167,12 @@ File `.env`/`.env.local` **tidak** di-commit; hanya `.env.example` sebagai templ
 - **Skema**: satu file `supabase/migrations/0001_init.sql` (tabel, index, view pencarian
   "ketua", fungsi `auth_role()`, kebijakan RLS, trigger single-ketua, dan trigger auto-create
   profile). Lihat [supabase/README.md](supabase/README.md).
-- **RLS**: baca/tambah/ubah = pengguna terautentikasi; hapus = admin.
+- **RLS per-prodi**: pengguna `prodi` hanya melihat/mengelola data program studinya sendiri
+  (kepemilikan kegiatan mengikuti prodi *ketua*); `admin` melihat semua; hapus = admin.
 - **Header keamanan** (produksi): CSP, HSTS, `X-Content-Type-Options`, `X-Frame-Options`,
   `Referrer-Policy`, `Permissions-Policy` — lihat [next.config.ts](next.config.ts).
 - **Validasi input**: seluruh input di-parse dengan **Zod** di server sebelum menyentuh DB.
+  Field URL dibatasi skema `http(s)` untuk mencegah XSS `javascript:`.
 
 ---
 
@@ -183,8 +187,10 @@ and activity detail pages with contributor management (lecturers & students).
 ## Key Features
 
 - **Authentication** via Supabase Auth (email/password) with a two-layer guard (middleware + layout).
-- **User roles**: `admin` (full access, including delete) and `prodi` (read/create/update).
+- **User roles**: `admin` (full access, including delete) and `prodi` (read/create/update, scoped to their own study program via RLS).
 - **Master data**: Lecturers (Dosen), Students (Mahasiswa), Study Programs (Prodi), Positions (Jabatan).
+- **User management** (admin): manage profiles, roles, and study-program assignment.
+- **Secure sessions**: auto-redirect to login when a session expires (real-time & after submit).
 - **Tridharma activities**: Research, Community Service, Achievements, Publications.
 - **Contributors**: add/remove lecturers & students with a **single-ketua (leader)** rule per
   activity, enforced at both database and application level.
@@ -200,7 +206,7 @@ and activity detail pages with contributor management (lecturers & students).
 | Framework | Next.js 16 (App Router, RSC, React Compiler) |
 | UI | React 19, Tailwind CSS v4, lucide-react, sonner |
 | Forms & Validation | react-hook-form, Zod |
-| Tables | @tanstack/react-table |
+| Tables | Custom (`components/data-table`) |
 | 3D/Animation | three.js |
 | Backend/DB | Supabase (Auth, PostgreSQL, RLS), @supabase/ssr |
 | Testing | Vitest |
@@ -266,10 +272,12 @@ npm run dev                       # http://localhost:3000
 ## Database & Security
 
 - **Schema**: single file `supabase/migrations/0001_init.sql`. See [supabase/README.md](supabase/README.md).
-- **RLS**: read/create/update for authenticated users; delete for admins only.
+- **Per-prodi RLS**: `prodi` users only see/manage data for their own study program
+  (activity ownership follows the *ketua*'s prodi); `admin` sees everything; delete is admin-only.
 - **Security headers** (production): CSP, HSTS, `X-Content-Type-Options`, `X-Frame-Options`,
   `Referrer-Policy`, `Permissions-Policy` — see [next.config.ts](next.config.ts).
 - **Input validation**: all inputs are parsed with **Zod** on the server before hitting the DB.
+  URL fields are restricted to the `http(s)` scheme to block `javascript:` XSS.
 
 ---
 
