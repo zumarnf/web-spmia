@@ -15,7 +15,7 @@ import { NavList } from "@/components/layout/nav-list";
  * Closes on: link tap, overlay click, Escape, and route change. Locks body
  * scroll while open. The desktop sidebar remains the nav from `md` upward.
  */
-export function MobileNav() {
+export function MobileNav({ isAdmin }: { isAdmin: boolean }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -94,7 +94,7 @@ export function MobileNav() {
                 <X className="size-5" aria-hidden="true" />
               </Button>
             </div>
-            <NavList onNavigate={() => setOpen(false)} />
+            <NavList onNavigate={() => setOpen(false)} isAdmin={isAdmin} />
           </aside>
         </div>,
           document.body,

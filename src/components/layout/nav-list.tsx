@@ -8,12 +8,24 @@ import { cn } from "@/lib/utils";
  * Shared navigation list rendered by both the desktop sidebar and the mobile
  * drawer. `onNavigate` lets the mobile drawer close itself when a link is tapped.
  */
-export function NavList({ onNavigate }: { onNavigate?: () => void }) {
+export function NavList({
+  onNavigate,
+  isAdmin = false,
+}: {
+  onNavigate?: () => void;
+  isAdmin?: boolean;
+}) {
   const pathname = usePathname();
+
+  // Hide admin-only items from non-admins; drop groups left empty as a result.
+  const groups = NAV_GROUPS.map((g) => ({
+    ...g,
+    items: g.items.filter((it) => !it.adminOnly || isAdmin),
+  })).filter((g) => g.items.length > 0);
 
   return (
     <nav className="flex-1 overflow-y-auto p-3">
-      {NAV_GROUPS.map((group) => (
+      {groups.map((group) => (
         <div key={group.label} className="mb-5">
           <p className="px-3 py-2 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-muted-2">
             {group.label}

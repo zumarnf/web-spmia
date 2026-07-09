@@ -8,10 +8,17 @@ import {
   HeartHandshake,
   Trophy,
   BookOpenText,
+  UserCog,
   type LucideIcon,
 } from "lucide-react";
 
-export type NavItem = { label: string; href: string; icon: LucideIcon };
+export type NavItem = {
+  label: string;
+  href: string;
+  icon: LucideIcon;
+  /** Only visible to admin-role users (filtered in NavList). */
+  adminOnly?: boolean;
+};
 export type NavGroup = { label: string; items: NavItem[] };
 
 export const NAV_GROUPS: NavGroup[] = [
@@ -35,6 +42,12 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: "Pengabdian", href: "/pengabdian", icon: HeartHandshake },
       { label: "Prestasi", href: "/prestasi", icon: Trophy },
       { label: "Publikasi", href: "/publikasi", icon: BookOpenText },
+    ],
+  },
+  {
+    label: "Administrasi",
+    items: [
+      { label: "Pengguna", href: "/pengguna", icon: UserCog, adminOnly: true },
     ],
   },
 ];
