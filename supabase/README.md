@@ -7,16 +7,17 @@ is safe to publish.
 
 | File | Purpose |
 | --- | --- |
-| `migrations/0001_init.sql` | **Everything in one file, single run:** enums, tables (incl. publikasi contributors), indexes, single-ketua rules, `updated_at` auto-refresh, "ketua" search views (with `security_invoker`), helper functions (`auth_role`, `auth_prodi`, `kegiatan_owned`), **per-prodi Row Level Security**, the auto-provision `profiles` trigger (`on_auth_user_created`), and the cross-table single-ketua trigger. |
+| `migrations/0001_init.sql` | **Everything in one file, single run:** enums, tables (incl. publikasi contributors), indexes, single-ketua rules, `updated_at` auto-refresh, "ketua" search views (with `security_invoker`), helper functions (`auth_role`, `auth_prodi`, `kegiatan_owned`, `kegiatan_visible`), per-prodi **Row Level Security**, cross-prodi ketua/contributor name computed fields (`ketua_nama`, `ketua_prodi_id`, `nama`), the auto-provision `profiles` trigger (`on_auth_user_created`), and the cross-table single-ketua trigger. |
 | `seed.sql` | Reference/demo data (re-runnable; truncates then inserts). |
 
 `0001_init.sql` is meant for a **fresh/empty database** and applies everything in
 a single run — paste it into the SQL Editor and Run once.
 
-> ⚠️ **Per-prodi RLS:** `prodi`-role users are isolated to their own program
-> studi; kegiatan ownership is derived from the ketua's prodi (a ketua-less
-> kegiatan is visible to all until a ketua is set). This policy set is
-> non-trivial — test it against a dev project before trusting it in production.
+> ⚠️ **Per-prodi RLS:** `prodi`-role users are isolated to their own program studi.
+> A kegiatan is **visible** to a prodi when that prodi has any contributor on it
+> (ketua *or* anggota); **editing** a kegiatan stays with the *ketua*'s prodi, and a
+> kegiatan with no contributors yet is visible to all until one is added. This policy
+> set is non-trivial — test it against a dev project before trusting it in production.
 
 ## Applying the schema
 

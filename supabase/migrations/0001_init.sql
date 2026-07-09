@@ -10,10 +10,12 @@
 --
 -- ⚠️ SECURITY — PER-PRODI RLS: `prodi`-role users are isolated to their own
 -- program studi (id_prodi); `admin` sees everything; delete stays admin-only.
--- Kegiatan (penelitian/pengabdian/prestasi/publikasi) ownership is derived from
--- the KETUA's prodi; a kegiatan with no ketua yet ("orphan") is visible to all
--- authenticated users so the create-then-assign flow works. This policy set is
--- non-trivial — TEST IT against a dev project before trusting it in production.
+-- Kegiatan (penelitian/pengabdian/prestasi/publikasi) VISIBILITY (kegiatan_visible)
+-- is granted when the caller's prodi has ANY contributor (ketua OR anggota) on it;
+-- WRITES (kegiatan_owned) require the KETUA's prodi. A kegiatan with no contributors
+-- yet ("orphan") is visible/writable to all authenticated users so the
+-- create-then-assign flow works. This policy set is non-trivial — TEST IT against a
+-- dev project before trusting it in production.
 
 -- ENUMS ----------------------------------------------------------------------
 create type user_role     as enum ('admin', 'prodi');
@@ -327,11 +329,180 @@ begin
   return not has_ketua;
 end $$;
 
+-- Can the current user SEE a kegiatan? Broader than kegiatan_owned: visibility is
+-- granted when the caller's prodi has ANY contributor (ketua OR anggota) on the
+-- kegiatan — so a prodi also sees activities its members merely participate in, not
+-- only the ones it leads. A kegiatan with NO contributors yet ("orphan") stays
+-- visible to all authenticated users so the create-then-assign flow works; admins
+-- see everything. WRITES (insert/update) still use kegiatan_owned (ketua-prodi only),
+-- so an anggota's prodi can view but not edit another prodi's kegiatan.
+create or replace function kegiatan_visible(
+  p_dosen_pivot text, p_mhs_pivot text, p_fk text, p_kid bigint
+) returns boolean
+language plpgsql stable security definer set search_path = public as $$
+declare visible boolean; has_member boolean;
+begin
+  if auth_role() = 'admin' then return true; end if;
+  if p_kid is null then return true; end if;
+
+  visible := false;
+  if p_dosen_pivot is not null then
+    execute format(
+      'select exists(select 1 from %I p join dosens d on d.nip = p.nip_dosen
+         where p.%I = $1 and d.id_prodi = $2)',
+      p_dosen_pivot, p_fk) into visible using p_kid, auth_prodi();
+  end if;
+  if not visible then
+    execute format(
+      'select exists(select 1 from %I p join mahasiswas m on m.nim = p.nim_mahasiswa
+         where p.%I = $1 and m.id_prodi = $2)',
+      p_mhs_pivot, p_fk) into visible using p_kid, auth_prodi();
+  end if;
+  if visible then return true; end if;
+
+  -- orphan check: no contributors at all (in either pivot)
+  has_member := false;
+  if p_dosen_pivot is not null then
+    execute format('select exists(select 1 from %I where %I = $1)',
+      p_dosen_pivot, p_fk) into has_member using p_kid;
+  end if;
+  if not has_member then
+    execute format('select exists(select 1 from %I where %I = $1)',
+      p_mhs_pivot, p_fk) into has_member using p_kid;
+  end if;
+  return not has_member;
+end $$;
+
 -- Does the current user own the dosen behind a history_jabatans row?
 create or replace function dosen_in_prodi(p_nip text) returns boolean
 language sql stable security definer set search_path = public as $$
   select auth_role() = 'admin'
       or exists(select 1 from dosens d where d.nip = p_nip and d.id_prodi = auth_prodi());
+$$;
+
+-- KETUA DISPLAY (computed fields) --------------------------------------------
+-- Expose the ketua's name + prodi for a kegiatan, bypassing the per-prodi RLS on
+-- dosens/mahasiswas so a participating anggota's prodi doesn't see "-" for a
+-- cross-prodi ketua. GUARDED by kegiatan_visible: only reveals for a kegiatan the
+-- caller can already see (cannot enumerate other prodi's contributors). PostgREST
+-- exposes these as computed columns `ketua_nama` / `ketua_prodi_id`.
+create or replace function ketua_nama(penelitians) returns text
+language sql stable security definer set search_path = public as $$
+  select case when kegiatan_visible('penelitian_dosens','penelitian_mahasiswas','id_penelitian', ($1).id) then
+    coalesce(
+      (select d.name from penelitian_dosens pd join dosens d on d.nip = pd.nip_dosen
+        where pd.id_penelitian = ($1).id and pd.peran = 'ketua' limit 1),
+      (select m.name from penelitian_mahasiswas pm join mahasiswas m on m.nim = pm.nim_mahasiswa
+        where pm.id_penelitian = ($1).id and pm.peran = 'ketua' limit 1)
+    ) end
+$$;
+create or replace function ketua_prodi_id(penelitians) returns bigint
+language sql stable security definer set search_path = public as $$
+  select case when kegiatan_visible('penelitian_dosens','penelitian_mahasiswas','id_penelitian', ($1).id) then
+    coalesce(
+      (select d.id_prodi from penelitian_dosens pd join dosens d on d.nip = pd.nip_dosen
+        where pd.id_penelitian = ($1).id and pd.peran = 'ketua' limit 1),
+      (select m.id_prodi from penelitian_mahasiswas pm join mahasiswas m on m.nim = pm.nim_mahasiswa
+        where pm.id_penelitian = ($1).id and pm.peran = 'ketua' limit 1)
+    ) end
+$$;
+
+create or replace function ketua_nama(pengabdians) returns text
+language sql stable security definer set search_path = public as $$
+  select case when kegiatan_visible('pengabdian_dosens','pengabdian_mahasiswas','id_pengabdian', ($1).id) then
+    coalesce(
+      (select d.name from pengabdian_dosens pd join dosens d on d.nip = pd.nip_dosen
+        where pd.id_pengabdian = ($1).id and pd.peran = 'ketua' limit 1),
+      (select m.name from pengabdian_mahasiswas pm join mahasiswas m on m.nim = pm.nim_mahasiswa
+        where pm.id_pengabdian = ($1).id and pm.peran = 'ketua' limit 1)
+    ) end
+$$;
+create or replace function ketua_prodi_id(pengabdians) returns bigint
+language sql stable security definer set search_path = public as $$
+  select case when kegiatan_visible('pengabdian_dosens','pengabdian_mahasiswas','id_pengabdian', ($1).id) then
+    coalesce(
+      (select d.id_prodi from pengabdian_dosens pd join dosens d on d.nip = pd.nip_dosen
+        where pd.id_pengabdian = ($1).id and pd.peran = 'ketua' limit 1),
+      (select m.id_prodi from pengabdian_mahasiswas pm join mahasiswas m on m.nim = pm.nim_mahasiswa
+        where pm.id_pengabdian = ($1).id and pm.peran = 'ketua' limit 1)
+    ) end
+$$;
+
+create or replace function ketua_nama(prestasis) returns text
+language sql stable security definer set search_path = public as $$
+  select case when kegiatan_visible(null,'prestasi_mahasiswas','id_prestasi', ($1).id) then
+    (select m.name from prestasi_mahasiswas pm join mahasiswas m on m.nim = pm.nim_mahasiswa
+      where pm.id_prestasi = ($1).id and pm.peran = 'ketua' limit 1)
+  end
+$$;
+create or replace function ketua_prodi_id(prestasis) returns bigint
+language sql stable security definer set search_path = public as $$
+  select case when kegiatan_visible(null,'prestasi_mahasiswas','id_prestasi', ($1).id) then
+    (select m.id_prodi from prestasi_mahasiswas pm join mahasiswas m on m.nim = pm.nim_mahasiswa
+      where pm.id_prestasi = ($1).id and pm.peran = 'ketua' limit 1)
+  end
+$$;
+
+create or replace function ketua_nama(publikasis) returns text
+language sql stable security definer set search_path = public as $$
+  select case when kegiatan_visible('publikasi_dosens','publikasi_mahasiswas','id_publikasi', ($1).id) then
+    coalesce(
+      (select d.name from publikasi_dosens pd join dosens d on d.nip = pd.nip_dosen
+        where pd.id_publikasi = ($1).id and pd.peran = 'ketua' limit 1),
+      (select m.name from publikasi_mahasiswas pm join mahasiswas m on m.nim = pm.nim_mahasiswa
+        where pm.id_publikasi = ($1).id and pm.peran = 'ketua' limit 1)
+    ) end
+$$;
+create or replace function ketua_prodi_id(publikasis) returns bigint
+language sql stable security definer set search_path = public as $$
+  select case when kegiatan_visible('publikasi_dosens','publikasi_mahasiswas','id_publikasi', ($1).id) then
+    coalesce(
+      (select d.id_prodi from publikasi_dosens pd join dosens d on d.nip = pd.nip_dosen
+        where pd.id_publikasi = ($1).id and pd.peran = 'ketua' limit 1),
+      (select m.id_prodi from publikasi_mahasiswas pm join mahasiswas m on m.nim = pm.nim_mahasiswa
+        where pm.id_publikasi = ($1).id and pm.peran = 'ketua' limit 1)
+    ) end
+$$;
+
+-- KONTRIBUTOR NAME (per-pivot computed field) --------------------------------
+-- Reveal EVERY contributor's name (not just the ketua) for a kegiatan the caller
+-- can see, so a cross-prodi anggota is not shown as "-" in the detail page and the
+-- contributor modal. Same guard as the ketua fields (kegiatan_visible): no leak of
+-- names outside a shared kegiatan. PostgREST exposes the computed column `nama`.
+create or replace function nama(penelitian_dosens) returns text
+language sql stable security definer set search_path = public as $$
+  select case when kegiatan_visible('penelitian_dosens','penelitian_mahasiswas','id_penelitian', ($1).id_penelitian)
+    then (select name from dosens where nip = ($1).nip_dosen) end
+$$;
+create or replace function nama(penelitian_mahasiswas) returns text
+language sql stable security definer set search_path = public as $$
+  select case when kegiatan_visible('penelitian_dosens','penelitian_mahasiswas','id_penelitian', ($1).id_penelitian)
+    then (select name from mahasiswas where nim = ($1).nim_mahasiswa) end
+$$;
+create or replace function nama(pengabdian_dosens) returns text
+language sql stable security definer set search_path = public as $$
+  select case when kegiatan_visible('pengabdian_dosens','pengabdian_mahasiswas','id_pengabdian', ($1).id_pengabdian)
+    then (select name from dosens where nip = ($1).nip_dosen) end
+$$;
+create or replace function nama(pengabdian_mahasiswas) returns text
+language sql stable security definer set search_path = public as $$
+  select case when kegiatan_visible('pengabdian_dosens','pengabdian_mahasiswas','id_pengabdian', ($1).id_pengabdian)
+    then (select name from mahasiswas where nim = ($1).nim_mahasiswa) end
+$$;
+create or replace function nama(prestasi_mahasiswas) returns text
+language sql stable security definer set search_path = public as $$
+  select case when kegiatan_visible(null,'prestasi_mahasiswas','id_prestasi', ($1).id_prestasi)
+    then (select name from mahasiswas where nim = ($1).nim_mahasiswa) end
+$$;
+create or replace function nama(publikasi_dosens) returns text
+language sql stable security definer set search_path = public as $$
+  select case when kegiatan_visible('publikasi_dosens','publikasi_mahasiswas','id_publikasi', ($1).id_publikasi)
+    then (select name from dosens where nip = ($1).nip_dosen) end
+$$;
+create or replace function nama(publikasi_mahasiswas) returns text
+language sql stable security definer set search_path = public as $$
+  select case when kegiatan_visible('publikasi_dosens','publikasi_mahasiswas','id_publikasi', ($1).id_publikasi)
+    then (select name from mahasiswas where nim = ($1).nim_mahasiswa) end
 $$;
 
 -- CROSS-TABLE SINGLE-KETUA TRIGGER -------------------------------------------
@@ -451,7 +622,7 @@ create policy history_jabatans_del on history_jabatans for delete to authenticat
 
 -- KEGIATAN parent tables: ownership via ketua (kegiatan_owned); delete admin.
 create policy penelitians_sel on penelitians for select to authenticated
-  using (kegiatan_owned('penelitian_dosens','penelitian_mahasiswas','id_penelitian', id));
+  using (kegiatan_visible('penelitian_dosens','penelitian_mahasiswas','id_penelitian', id));
 create policy penelitians_ins on penelitians for insert to authenticated with check (true);
 create policy penelitians_upd on penelitians for update to authenticated
   using (kegiatan_owned('penelitian_dosens','penelitian_mahasiswas','id_penelitian', id))
@@ -459,7 +630,7 @@ create policy penelitians_upd on penelitians for update to authenticated
 create policy penelitians_del on penelitians for delete to authenticated using (auth_role() = 'admin');
 
 create policy pengabdians_sel on pengabdians for select to authenticated
-  using (kegiatan_owned('pengabdian_dosens','pengabdian_mahasiswas','id_pengabdian', id));
+  using (kegiatan_visible('pengabdian_dosens','pengabdian_mahasiswas','id_pengabdian', id));
 create policy pengabdians_ins on pengabdians for insert to authenticated with check (true);
 create policy pengabdians_upd on pengabdians for update to authenticated
   using (kegiatan_owned('pengabdian_dosens','pengabdian_mahasiswas','id_pengabdian', id))
@@ -467,7 +638,7 @@ create policy pengabdians_upd on pengabdians for update to authenticated
 create policy pengabdians_del on pengabdians for delete to authenticated using (auth_role() = 'admin');
 
 create policy prestasis_sel on prestasis for select to authenticated
-  using (kegiatan_owned(null,'prestasi_mahasiswas','id_prestasi', id));
+  using (kegiatan_visible(null,'prestasi_mahasiswas','id_prestasi', id));
 create policy prestasis_ins on prestasis for insert to authenticated with check (true);
 create policy prestasis_upd on prestasis for update to authenticated
   using (kegiatan_owned(null,'prestasi_mahasiswas','id_prestasi', id))
@@ -475,7 +646,7 @@ create policy prestasis_upd on prestasis for update to authenticated
 create policy prestasis_del on prestasis for delete to authenticated using (auth_role() = 'admin');
 
 create policy publikasis_sel on publikasis for select to authenticated
-  using (kegiatan_owned('publikasi_dosens','publikasi_mahasiswas','id_publikasi', id));
+  using (kegiatan_visible('publikasi_dosens','publikasi_mahasiswas','id_publikasi', id));
 create policy publikasis_ins on publikasis for insert to authenticated with check (true);
 create policy publikasis_upd on publikasis for update to authenticated
   using (kegiatan_owned('publikasi_dosens','publikasi_mahasiswas','id_publikasi', id))
@@ -486,7 +657,7 @@ create policy publikasis_del on publikasis for delete to authenticated using (au
 -- (or still orphan). INSERT check runs kegiatan_owned on the NEW row's fk, so
 -- the FIRST ketua can be added to an orphan kegiatan. Delete admin-only.
 create policy penelitian_dosens_sel on penelitian_dosens for select to authenticated
-  using (kegiatan_owned('penelitian_dosens','penelitian_mahasiswas','id_penelitian', id_penelitian));
+  using (kegiatan_visible('penelitian_dosens','penelitian_mahasiswas','id_penelitian', id_penelitian));
 create policy penelitian_dosens_ins on penelitian_dosens for insert to authenticated
   with check (kegiatan_owned('penelitian_dosens','penelitian_mahasiswas','id_penelitian', id_penelitian));
 create policy penelitian_dosens_upd on penelitian_dosens for update to authenticated
@@ -495,7 +666,7 @@ create policy penelitian_dosens_upd on penelitian_dosens for update to authentic
 create policy penelitian_dosens_del on penelitian_dosens for delete to authenticated using (auth_role() = 'admin');
 
 create policy penelitian_mahasiswas_sel on penelitian_mahasiswas for select to authenticated
-  using (kegiatan_owned('penelitian_dosens','penelitian_mahasiswas','id_penelitian', id_penelitian));
+  using (kegiatan_visible('penelitian_dosens','penelitian_mahasiswas','id_penelitian', id_penelitian));
 create policy penelitian_mahasiswas_ins on penelitian_mahasiswas for insert to authenticated
   with check (kegiatan_owned('penelitian_dosens','penelitian_mahasiswas','id_penelitian', id_penelitian));
 create policy penelitian_mahasiswas_upd on penelitian_mahasiswas for update to authenticated
@@ -504,7 +675,7 @@ create policy penelitian_mahasiswas_upd on penelitian_mahasiswas for update to a
 create policy penelitian_mahasiswas_del on penelitian_mahasiswas for delete to authenticated using (auth_role() = 'admin');
 
 create policy pengabdian_dosens_sel on pengabdian_dosens for select to authenticated
-  using (kegiatan_owned('pengabdian_dosens','pengabdian_mahasiswas','id_pengabdian', id_pengabdian));
+  using (kegiatan_visible('pengabdian_dosens','pengabdian_mahasiswas','id_pengabdian', id_pengabdian));
 create policy pengabdian_dosens_ins on pengabdian_dosens for insert to authenticated
   with check (kegiatan_owned('pengabdian_dosens','pengabdian_mahasiswas','id_pengabdian', id_pengabdian));
 create policy pengabdian_dosens_upd on pengabdian_dosens for update to authenticated
@@ -513,7 +684,7 @@ create policy pengabdian_dosens_upd on pengabdian_dosens for update to authentic
 create policy pengabdian_dosens_del on pengabdian_dosens for delete to authenticated using (auth_role() = 'admin');
 
 create policy pengabdian_mahasiswas_sel on pengabdian_mahasiswas for select to authenticated
-  using (kegiatan_owned('pengabdian_dosens','pengabdian_mahasiswas','id_pengabdian', id_pengabdian));
+  using (kegiatan_visible('pengabdian_dosens','pengabdian_mahasiswas','id_pengabdian', id_pengabdian));
 create policy pengabdian_mahasiswas_ins on pengabdian_mahasiswas for insert to authenticated
   with check (kegiatan_owned('pengabdian_dosens','pengabdian_mahasiswas','id_pengabdian', id_pengabdian));
 create policy pengabdian_mahasiswas_upd on pengabdian_mahasiswas for update to authenticated
@@ -522,7 +693,7 @@ create policy pengabdian_mahasiswas_upd on pengabdian_mahasiswas for update to a
 create policy pengabdian_mahasiswas_del on pengabdian_mahasiswas for delete to authenticated using (auth_role() = 'admin');
 
 create policy prestasi_mahasiswas_sel on prestasi_mahasiswas for select to authenticated
-  using (kegiatan_owned(null,'prestasi_mahasiswas','id_prestasi', id_prestasi));
+  using (kegiatan_visible(null,'prestasi_mahasiswas','id_prestasi', id_prestasi));
 create policy prestasi_mahasiswas_ins on prestasi_mahasiswas for insert to authenticated
   with check (kegiatan_owned(null,'prestasi_mahasiswas','id_prestasi', id_prestasi));
 create policy prestasi_mahasiswas_upd on prestasi_mahasiswas for update to authenticated
@@ -531,7 +702,7 @@ create policy prestasi_mahasiswas_upd on prestasi_mahasiswas for update to authe
 create policy prestasi_mahasiswas_del on prestasi_mahasiswas for delete to authenticated using (auth_role() = 'admin');
 
 create policy publikasi_dosens_sel on publikasi_dosens for select to authenticated
-  using (kegiatan_owned('publikasi_dosens','publikasi_mahasiswas','id_publikasi', id_publikasi));
+  using (kegiatan_visible('publikasi_dosens','publikasi_mahasiswas','id_publikasi', id_publikasi));
 create policy publikasi_dosens_ins on publikasi_dosens for insert to authenticated
   with check (kegiatan_owned('publikasi_dosens','publikasi_mahasiswas','id_publikasi', id_publikasi));
 create policy publikasi_dosens_upd on publikasi_dosens for update to authenticated
@@ -540,7 +711,7 @@ create policy publikasi_dosens_upd on publikasi_dosens for update to authenticat
 create policy publikasi_dosens_del on publikasi_dosens for delete to authenticated using (auth_role() = 'admin');
 
 create policy publikasi_mahasiswas_sel on publikasi_mahasiswas for select to authenticated
-  using (kegiatan_owned('publikasi_dosens','publikasi_mahasiswas','id_publikasi', id_publikasi));
+  using (kegiatan_visible('publikasi_dosens','publikasi_mahasiswas','id_publikasi', id_publikasi));
 create policy publikasi_mahasiswas_ins on publikasi_mahasiswas for insert to authenticated
   with check (kegiatan_owned('publikasi_dosens','publikasi_mahasiswas','id_publikasi', id_publikasi));
 create policy publikasi_mahasiswas_upd on publikasi_mahasiswas for update to authenticated
