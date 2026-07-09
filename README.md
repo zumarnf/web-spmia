@@ -167,8 +167,9 @@ File `.env`/`.env.local` **tidak** di-commit; hanya `.env.example` sebagai templ
 - **Skema**: satu file `supabase/migrations/0001_init.sql` (tabel, index, view pencarian
   "ketua", fungsi `auth_role()`, kebijakan RLS, trigger single-ketua, dan trigger auto-create
   profile). Lihat [supabase/README.md](supabase/README.md).
-- **RLS per-prodi**: pengguna `prodi` hanya melihat/mengelola data program studinya sendiri
-  (kepemilikan kegiatan mengikuti prodi *ketua*); `admin` melihat semua; hapus = admin.
+- **RLS per-prodi**: pengguna `prodi` hanya mengakses data program studinya sendiri. Kegiatan
+  **terlihat** bila prodi punya kontributor (ketua *atau* anggota) di dalamnya; **mengedit**
+  kegiatan tetap milik prodi *ketua*. `admin` melihat semua; hapus = admin.
 - **Header keamanan** (produksi): CSP, HSTS, `X-Content-Type-Options`, `X-Frame-Options`,
   `Referrer-Policy`, `Permissions-Policy` — lihat [next.config.ts](next.config.ts).
 - **Validasi input**: seluruh input di-parse dengan **Zod** di server sebelum menyentuh DB.
@@ -272,8 +273,9 @@ npm run dev                       # http://localhost:3000
 ## Database & Security
 
 - **Schema**: single file `supabase/migrations/0001_init.sql`. See [supabase/README.md](supabase/README.md).
-- **Per-prodi RLS**: `prodi` users only see/manage data for their own study program
-  (activity ownership follows the *ketua*'s prodi); `admin` sees everything; delete is admin-only.
+- **Per-prodi RLS**: `prodi` users only access their own study program's data. An activity is
+  **visible** when the prodi has a contributor on it (ketua *or* anggota); **editing** stays with
+  the *ketua*'s prodi. `admin` sees everything; delete is admin-only.
 - **Security headers** (production): CSP, HSTS, `X-Content-Type-Options`, `X-Frame-Options`,
   `Referrer-Policy`, `Permissions-Policy` — see [next.config.ts](next.config.ts).
 - **Input validation**: all inputs are parsed with **Zod** on the server before hitting the DB.
