@@ -1,11 +1,31 @@
 "use server";
 import { withAction } from "@/lib/action";
+import { createClient } from "@/lib/supabase/server";
 import { requireAdmin, requireUser } from "@/lib/auth/guard";
 import { kontribErrorMessage } from "@/lib/errors";
 import { prestasiMahasiswaSchema, prestasiSchema } from "./schemas";
 import type { ActionResult } from "@/types/api";
 
 const PATH = "/prestasi";
+const ONE_KETUA_MSG = "Sudah ada ketua pada kegiatan ini — hanya boleh satu ketua.";
+
+/**
+ * A prestasi may have at most ONE ketua. The `prestasi_mahasiswas_one_ketua`
+ * partial unique index is the authoritative guard (prestasi has a single pivot,
+ * so no cross-table trigger is needed); this proactive check gives the user an
+ * immediate, friendly rejection instead of a round-trip to a DB error.
+ */
+async function prestasiHasKetua(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  id: number,
+): Promise<boolean> {
+  const { count } = await supabase
+    .from("prestasi_mahasiswas")
+    .select("id", { count: "exact", head: true })
+    .eq("id_prestasi", id)
+    .eq("peran", "ketua");
+  return (count ?? 0) > 0;
+}
 
 export async function createPrestasi(
   input: unknown,
@@ -67,6 +87,8 @@ export async function addPrestasiMahasiswa(
     success: "Kontributor ditambahkan",
     run: async (supabase) => {
       const values = prestasiMahasiswaSchema.parse(input);
+      if (values.peran === "ketua" && (await prestasiHasKetua(supabase, id)))
+        return { ok: false, message: ONE_KETUA_MSG };
       const { error } = await supabase
         .from("prestasi_mahasiswas")
         .insert({ ...values, id_prestasi: id });
