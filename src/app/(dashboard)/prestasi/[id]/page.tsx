@@ -14,6 +14,7 @@ import {
   type KontribItem,
 } from "@/features/kegiatan/components/kontrib-panel";
 import { getCurrentProfile } from "@/lib/auth/guard";
+import { safeHref } from "@/lib/url";
 
 type Detail = {
   nama_lomba: string | null;
@@ -38,6 +39,8 @@ export default async function PrestasiDetailPage({
   if (!data) notFound();
 
   const p = data as Detail;
+  const certHref = safeHref(p.url_sertifikat);
+  const fotoHref = safeHref(p.url_foto);
   const items: KontribItem[] = p.mahasiswa.map((m) => ({
     id: m.id,
     peran: m.peran,
@@ -64,15 +67,17 @@ export default async function PrestasiDetailPage({
             </div>
             <a
               className="text-secondary underline-offset-2 hover:underline"
-              href={p.url_sertifikat ?? "#"}
-              aria-disabled={!p.url_sertifikat}
+              href={certHref ?? "#"}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-disabled={!certHref}
             >
-              {p.url_sertifikat ? "Lihat sertifikat" : "Sertifikat belum ada"}
+              {certHref ? "Lihat sertifikat" : "Sertifikat belum ada"}
             </a>
-            {p.url_foto && (
+            {fotoHref && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={p.url_foto}
+                src={fotoHref}
                 alt={`Foto prestasi ${p.nama_lomba ?? ""}`}
                 className="mt-2 max-h-64 w-full rounded-lg border border-border object-cover"
               />

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { optUrl } from "@/lib/url";
 
 const optText = z
   .string()
@@ -25,7 +26,7 @@ export const kegiatanSchema = z.object({
   bidang: optText,
   dana: optInt,
   sumber_dana: z.enum(["Internal", "Eksternal"]).nullable().optional(),
-  laporan_akhir: optText,
+  laporan_akhir: optUrl,
 });
 
 export type KegiatanInput = z.input<typeof kegiatanSchema>;

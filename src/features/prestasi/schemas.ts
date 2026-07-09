@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { optUrl } from "@/lib/url";
 
 const optText = z
   .string()
@@ -9,8 +10,8 @@ const optText = z
 export const prestasiSchema = z.object({
   nama_lomba: optText,
   juara: optText,
-  url_foto: optText,
-  url_sertifikat: optText,
+  url_foto: optUrl,
+  url_sertifikat: optUrl,
 });
 
 export type PrestasiInput = z.input<typeof prestasiSchema>;

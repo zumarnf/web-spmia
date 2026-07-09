@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { BackLink } from "@/components/common/back-link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatRupiah } from "@/lib/utils";
+import { safeHref } from "@/lib/url";
 import { KontribSection, type KontribActions } from "./kontrib-section";
 import type { KontribItem, Option } from "./kontrib-panel";
 
@@ -94,9 +95,9 @@ export function KegiatanDetailView({
               <span className="text-muted">Total Kontributor</span>
               <span className="font-semibold tabular">{totalKontrib}</span>
             </div>
-            {k.laporan_akhir && (
+            {safeHref(k.laporan_akhir) && (
               <a
-                href={k.laporan_akhir}
+                href={safeHref(k.laporan_akhir)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-secondary underline-offset-4 hover:underline"

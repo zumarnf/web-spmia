@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { optUrl } from "@/lib/url";
 
 const optText = z
   .string()
@@ -17,7 +18,7 @@ export const publikasiSchema = z.object({
       return Number.isFinite(n) ? n : null;
     }),
   doi: optText,
-  url: optText,
+  url: optUrl,
 });
 
 export type PublikasiInput = z.input<typeof publikasiSchema>;
