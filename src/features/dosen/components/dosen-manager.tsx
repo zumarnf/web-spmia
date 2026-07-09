@@ -22,11 +22,13 @@ export function DosenManager({
   meta,
   isAdmin,
   prodiOptions,
+  lockedProdiId = null,
 }: {
   rows: DosenRow[];
   meta: ListMeta;
   isAdmin: boolean;
   prodiOptions: { id: number; name: string }[];
+  lockedProdiId?: number | null;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState<Dosen | null>(null);
@@ -105,13 +107,18 @@ export function DosenManager({
         }
       />
       <Modal open={creating} onClose={() => setCreating(false)} title="Tambah Dosen">
-        <DosenForm prodiOptions={prodiOptions} onDone={() => setCreating(false)} />
+        <DosenForm
+          prodiOptions={prodiOptions}
+          lockedProdiId={lockedProdiId}
+          onDone={() => setCreating(false)}
+        />
       </Modal>
       <Modal open={!!editing} onClose={() => setEditing(null)} title="Ubah Dosen">
         {editing && (
           <DosenForm
             initial={editing}
             prodiOptions={prodiOptions}
+            lockedProdiId={lockedProdiId}
             onDone={() => setEditing(null)}
           />
         )}

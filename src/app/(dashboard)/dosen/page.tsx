@@ -27,6 +27,7 @@ export default async function DosenPage({
         meta={meta}
         isAdmin={profile?.role === "admin"}
         prodiOptions={prodiOptions}
+        lockedProdiId={profile?.role === "admin" ? null : (profile?.id_prodi ?? null)}
       />
     </>
   );

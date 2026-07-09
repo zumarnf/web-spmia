@@ -21,14 +21,21 @@ type ProdiOption = { id: number; name: string };
 export function DosenForm({
   initial,
   prodiOptions,
+  lockedProdiId = null,
   onDone,
 }: {
   initial?: Dosen;
   prodiOptions: ProdiOption[];
+  /** When set (non-admin), the prodi is fixed to this id and cannot be changed. */
+  lockedProdiId?: number | null;
   onDone: () => void;
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
+  const locked = lockedProdiId != null;
+  const prodiChoices = locked
+    ? prodiOptions.filter((p) => p.id === lockedProdiId)
+    : prodiOptions;
   const {
     register,
     handleSubmit,
@@ -48,7 +55,7 @@ export function DosenForm({
           pendidikan: initial.pendidikan ?? "",
           kode_dosen: initial.kode_dosen ?? "",
         }
-      : { status: "Aktif" },
+      : { status: "Aktif", ...(locked ? { id_prodi: lockedProdiId } : {}) },
   });
 
   const onSubmit = async (values: DosenOutput) => {
@@ -107,8 +114,8 @@ export function DosenForm({
             aria-invalid={!!errors.id_prodi}
             {...register("id_prodi")}
           >
-            <option value="">Pilih prodi…</option>
-            {prodiOptions.map((p) => (
+            {!locked && <option value="">Pilih prodi…</option>}
+            {prodiChoices.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
               </option>

@@ -21,11 +21,13 @@ export function MahasiswaManager({
   meta,
   isAdmin,
   prodiOptions,
+  lockedProdiId = null,
 }: {
   rows: MahasiswaRow[];
   meta: ListMeta;
   isAdmin: boolean;
   prodiOptions: { id: number; name: string }[];
+  lockedProdiId?: number | null;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState<Mahasiswa | null>(null);
@@ -86,13 +88,18 @@ export function MahasiswaManager({
         }
       />
       <Modal open={creating} onClose={() => setCreating(false)} title="Tambah Mahasiswa">
-        <MahasiswaForm prodiOptions={prodiOptions} onDone={() => setCreating(false)} />
+        <MahasiswaForm
+          prodiOptions={prodiOptions}
+          lockedProdiId={lockedProdiId}
+          onDone={() => setCreating(false)}
+        />
       </Modal>
       <Modal open={!!editing} onClose={() => setEditing(null)} title="Ubah Mahasiswa">
         {editing && (
           <MahasiswaForm
             initial={editing}
             prodiOptions={prodiOptions}
+            lockedProdiId={lockedProdiId}
             onDone={() => setEditing(null)}
           />
         )}

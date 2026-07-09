@@ -18,14 +18,21 @@ type MahasiswaOutput = z.output<typeof mahasiswaSchema>;
 export function MahasiswaForm({
   initial,
   prodiOptions,
+  lockedProdiId = null,
   onDone,
 }: {
   initial?: Mahasiswa;
   prodiOptions: { id: number; name: string }[];
+  /** When set (non-admin), the prodi is fixed to this id and cannot be changed. */
+  lockedProdiId?: number | null;
   onDone: () => void;
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
+  const locked = lockedProdiId != null;
+  const prodiChoices = locked
+    ? prodiOptions.filter((p) => p.id === lockedProdiId)
+    : prodiOptions;
   const {
     register,
     handleSubmit,
@@ -33,7 +40,11 @@ export function MahasiswaForm({
     formState: { errors },
   } = useForm<MahasiswaInput, unknown, MahasiswaOutput>({
     resolver: zodResolver(mahasiswaSchema),
-    defaultValues: initial ? { ...initial } : undefined,
+    defaultValues: initial
+      ? { ...initial }
+      : locked
+        ? { id_prodi: lockedProdiId }
+        : undefined,
   });
 
   const onSubmit = async (values: MahasiswaOutput) => {
@@ -80,8 +91,8 @@ export function MahasiswaForm({
       </Field>
       <Field id="id_prodi" label="Program Studi" error={errors.id_prodi?.message}>
         <Select id="id_prodi" aria-invalid={!!errors.id_prodi} {...register("id_prodi")}>
-          <option value="">Pilih prodi…</option>
-          {prodiOptions.map((p) => (
+          {!locked && <option value="">Pilih prodi…</option>}
+          {prodiChoices.map((p) => (
             <option key={p.id} value={p.id}>
               {p.name}
             </option>
