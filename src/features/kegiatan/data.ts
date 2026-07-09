@@ -18,11 +18,14 @@ export type KegiatanRow = Penelitian & {
 };
 
 export type KegiatanTables = {
-  table: "penelitians" | "pengabdians";
-  view: "penelitian_with_ketua" | "pengabdian_with_ketua";
-  dosenPivot: "penelitian_dosens" | "pengabdian_dosens";
-  mahasiswaPivot: "penelitian_mahasiswas" | "pengabdian_mahasiswas";
-  fk: "id_penelitian" | "id_pengabdian";
+  table: "penelitians" | "pengabdians" | "publikasis";
+  view: "penelitian_with_ketua" | "pengabdian_with_ketua" | "publikasi_with_ketua";
+  dosenPivot: "penelitian_dosens" | "pengabdian_dosens" | "publikasi_dosens";
+  mahasiswaPivot:
+    | "penelitian_mahasiswas"
+    | "pengabdian_mahasiswas"
+    | "publikasi_mahasiswas";
+  fk: "id_penelitian" | "id_pengabdian" | "id_publikasi";
 };
 
 const SEARCH_FIELDS = ["judul", "no_sk", "no_kontrak", "bidang", "skema"] as const;

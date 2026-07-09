@@ -1,5 +1,13 @@
 import { PageHeader } from "@/components/layout/page-header";
 import { getPublikasiList } from "@/features/publikasi/data";
+import {
+  addPublikasiDosen,
+  addPublikasiMahasiswa,
+  removePublikasiDosen,
+  removePublikasiMahasiswa,
+} from "@/features/publikasi/actions";
+import { getDosenOptions } from "@/features/dosen/data";
+import { getMahasiswaOptions } from "@/features/mahasiswa/data";
 import { PublikasiManager } from "@/features/publikasi/components/publikasi-manager";
 import { getCurrentProfile } from "@/lib/auth/guard";
 import { parseListSearchParams } from "@/lib/query/list-query";
@@ -12,15 +20,32 @@ export default async function PublikasiPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const sp = await searchParams;
-  const [{ data, meta }, profile] = await Promise.all([
+  const [{ data, meta }, dosenOptions, mahasiswaOptions, profile] = await Promise.all([
     getPublikasiList(parseListSearchParams(sp)),
+    getDosenOptions(),
+    getMahasiswaOptions(),
     getCurrentProfile(),
   ]);
 
   return (
     <>
-      <PageHeader title="Publikasi" description="Daftar publikasi ilmiah." />
-      <PublikasiManager rows={data} meta={meta} isAdmin={profile?.role === "admin"} />
+      <PageHeader
+        title="Publikasi"
+        description="Daftar publikasi ilmiah beserta dosen dan mahasiswa yang terlibat."
+      />
+      <PublikasiManager
+        rows={data}
+        meta={meta}
+        isAdmin={profile?.role === "admin"}
+        dosenOptions={dosenOptions}
+        mahasiswaOptions={mahasiswaOptions}
+        kontribActions={{
+          addDosen: addPublikasiDosen,
+          addMahasiswa: addPublikasiMahasiswa,
+          removeDosen: removePublikasiDosen,
+          removeMahasiswa: removePublikasiMahasiswa,
+        }}
+      />
     </>
   );
 }
