@@ -30,6 +30,7 @@ export default async function PrestasiPage({
         rows={data}
         meta={meta}
         isAdmin={profile?.role === "admin"}
+        myProdiId={profile?.id_prodi ?? null}
         mahasiswaOptions={mahasiswaOptions}
       />
     </>

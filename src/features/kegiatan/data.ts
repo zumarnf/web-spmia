@@ -5,16 +5,12 @@ import type { ListParams, ListResult } from "@/types/api";
 import type { PeranKontrib, Penelitian } from "@/types/database.types";
 
 export type KegiatanRow = Penelitian & {
-  dosen: {
-    id: number;
-    peran: PeranKontrib;
-    dosen: { nip: string; name: string } | null;
-  }[];
-  mahasiswa: {
-    id: number;
-    peran: PeranKontrib;
-    mahasiswa: { nim: number; name: string } | null;
-  }[];
+  /** Ketua's name + prodi via SECURITY DEFINER computed fields (cross-prodi safe). */
+  ketua_nama: string | null;
+  ketua_prodi_id: number | null;
+  /** `nama` is the per-pivot computed field: contributor name across prodi (guarded). */
+  dosen: { id: number; peran: PeranKontrib; nama: string | null }[];
+  mahasiswa: { id: number; peran: PeranKontrib; nama: string | null }[];
 };
 
 export type KegiatanTables = {
@@ -33,9 +29,9 @@ const SORTABLE = new Set(["judul", "tahun", "dana", "created_at"]);
 const FILTERABLE = new Set(["sumber_dana", "tahun"]);
 
 function embed(t: KegiatanTables) {
-  return `*,
-    dosen:${t.dosenPivot}(id, peran, dosen:dosens(nip, name)),
-    mahasiswa:${t.mahasiswaPivot}(id, peran, mahasiswa:mahasiswas(nim, name))`;
+  return `*, ketua_nama, ketua_prodi_id,
+    dosen:${t.dosenPivot}(id, peran, nama),
+    mahasiswa:${t.mahasiswaPivot}(id, peran, nama)`;
 }
 
 export async function getKegiatanList(
@@ -81,8 +77,8 @@ export async function getKegiatanById(t: KegiatanTables, id: number) {
     .from(t.table)
     .select(
       `*,
-      dosen:${t.dosenPivot}(id, peran, dosen:dosens(nip, name, prodi:prodis(name))),
-      mahasiswa:${t.mahasiswaPivot}(id, peran, mahasiswa:mahasiswas(nim, name, prodi:prodis(name)))`,
+      dosen:${t.dosenPivot}(id, peran, nama),
+      mahasiswa:${t.mahasiswaPivot}(id, peran, nama)`,
     )
     .eq("id", id)
     .single();

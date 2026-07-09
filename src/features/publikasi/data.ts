@@ -14,16 +14,10 @@ export const PUBLIKASI_TABLES: KegiatanTables = {
 };
 
 export type PublikasiRow = Publikasi & {
-  dosen: {
-    id: number;
-    peran: PeranKontrib;
-    dosen: { nip: string; name: string } | null;
-  }[];
-  mahasiswa: {
-    id: number;
-    peran: PeranKontrib;
-    mahasiswa: { nim: number; name: string } | null;
-  }[];
+  ketua_nama: string | null;
+  ketua_prodi_id: number | null;
+  dosen: { id: number; peran: PeranKontrib; nama: string | null }[];
+  mahasiswa: { id: number; peran: PeranKontrib; nama: string | null }[];
 };
 
 const SEARCH_FIELDS = ["judul", "doi"] as const;
@@ -37,9 +31,9 @@ export async function getPublikasiList(
   let query = supabase
     .from("publikasis")
     .select(
-      `*,
-      dosen:publikasi_dosens(id, peran, dosen:dosens(nip, name)),
-      mahasiswa:publikasi_mahasiswas(id, peran, mahasiswa:mahasiswas(nim, name))`,
+      `*, ketua_nama, ketua_prodi_id,
+      dosen:publikasi_dosens(id, peran, nama),
+      mahasiswa:publikasi_mahasiswas(id, peran, nama)`,
       { count: "exact" },
     );
   if (p.search) query = query.or(buildSearchExpr(SEARCH_FIELDS, p.search));

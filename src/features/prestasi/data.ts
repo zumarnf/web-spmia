@@ -5,11 +5,9 @@ import type { ListParams, ListResult } from "@/types/api";
 import type { PeranKontrib, Prestasi } from "@/types/database.types";
 
 export type PrestasiRow = Prestasi & {
-  mahasiswa: {
-    id: number;
-    peran: PeranKontrib;
-    mahasiswa: { nim: number; name: string } | null;
-  }[];
+  /** Ketua's prodi via computed field; gates the "Ubah" button (no ketua column shown). */
+  ketua_prodi_id: number | null;
+  mahasiswa: { id: number; peran: PeranKontrib; nama: string | null }[];
 };
 
 const SEARCH_FIELDS = ["nama_lomba", "juara"] as const;
@@ -22,9 +20,10 @@ export async function getPrestasiList(
   const supabase = await createClient();
   let query = supabase
     .from("prestasis")
-    .select(`*, mahasiswa:prestasi_mahasiswas(id, peran, mahasiswa:mahasiswas(nim, name))`, {
-      count: "exact",
-    });
+    .select(
+      `*, ketua_prodi_id, mahasiswa:prestasi_mahasiswas(id, peran, nama)`,
+      { count: "exact" },
+    );
   if (p.search) query = query.or(buildSearchExpr(SEARCH_FIELDS, p.search));
   query = query.order(SORTABLE.has(p.sort) ? p.sort : "created_at", {
     ascending: p.order === "asc",
@@ -40,9 +39,7 @@ export async function getPrestasiById(id: number) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("prestasis")
-    .select(
-      `*, mahasiswa:prestasi_mahasiswas(id, peran, mahasiswa:mahasiswas(nim, name))`,
-    )
+    .select(`*, mahasiswa:prestasi_mahasiswas(id, peran, nama)`)
     .eq("id", id)
     .single();
   return data;

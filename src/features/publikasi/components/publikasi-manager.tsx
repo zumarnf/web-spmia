@@ -11,6 +11,7 @@ import {
   type KontribActions,
 } from "@/features/kegiatan/components/kontrib-section";
 import type { KontribItem, Option } from "@/features/kegiatan/components/kontrib-panel";
+import { canEditKegiatan } from "@/features/kegiatan/access";
 import { PublikasiForm } from "./publikasi-form";
 import { deletePublikasi } from "../actions";
 import type { PublikasiRow } from "../data";
@@ -18,15 +19,14 @@ import type { ListMeta } from "@/types/api";
 import type { Publikasi } from "@/types/database.types";
 
 function ketua(row: PublikasiRow): string {
-  const kd = row.dosen.find((d) => d.peran === "ketua")?.dosen?.name;
-  const km = row.mahasiswa.find((m) => m.peran === "ketua")?.mahasiswa?.name;
-  return kd ?? km ?? "-";
+  return row.ketua_nama ?? "-";
 }
 
 export function PublikasiManager({
   rows,
   meta,
   isAdmin,
+  myProdiId,
   dosenOptions,
   mahasiswaOptions,
   kontribActions,
@@ -34,6 +34,8 @@ export function PublikasiManager({
   rows: PublikasiRow[];
   meta: ListMeta;
   isAdmin: boolean;
+  /** Current user's prodi (null for admin); gates the per-row "Ubah" button. */
+  myProdiId: number | null;
   dosenOptions: { nip: string; name: string }[];
   mahasiswaOptions: { nim: number; name: string }[];
   kontribActions: KontribActions;
@@ -50,12 +52,12 @@ export function PublikasiManager({
   const managingDosen: KontribItem[] = (managingRow?.dosen ?? []).map((d) => ({
     id: d.id,
     peran: d.peran,
-    name: d.dosen?.name ?? "-",
+    name: d.nama ?? "-",
   }));
   const managingMhs: KontribItem[] = (managingRow?.mahasiswa ?? []).map((m) => ({
     id: m.id,
     peran: m.peran,
-    name: m.mahasiswa?.name ?? "-",
+    name: m.nama ?? "-",
   }));
 
   const columns: Column<PublikasiRow>[] = [
@@ -90,16 +92,18 @@ export function PublikasiManager({
           >
             <Users className="size-4" />
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-9"
-            aria-label={`Ubah ${row.judul}`}
-            title="Ubah data"
-            onClick={() => setEditing(row)}
-          >
-            <Pencil className="size-4" />
-          </Button>
+          {canEditKegiatan(isAdmin, myProdiId, row.ketua_prodi_id) && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-9"
+              aria-label={`Ubah ${row.judul}`}
+              title="Ubah data"
+              onClick={() => setEditing(row)}
+            >
+              <Pencil className="size-4" />
+            </Button>
+          )}
           {isAdmin && (
             <DeleteButton onDelete={() => deletePublikasi(row.id)} itemLabel={row.judul} />
           )}

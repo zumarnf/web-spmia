@@ -23,8 +23,8 @@ type Detail = {
   tahun: number | null;
   doi: string | null;
   url: string | null;
-  dosen: { id: number; peran: string; dosen: { name: string } | null }[];
-  mahasiswa: { id: number; peran: string; mahasiswa: { name: string } | null }[];
+  dosen: { id: number; peran: string; nama: string | null }[];
+  mahasiswa: { id: number; peran: string; nama: string | null }[];
 };
 
 export default async function PublikasiDetailPage({
@@ -46,12 +46,12 @@ export default async function PublikasiDetailPage({
   const dosenItems: KontribItem[] = p.dosen.map((d) => ({
     id: d.id,
     peran: d.peran,
-    name: d.dosen?.name ?? "-",
+    name: d.nama ?? "-",
   }));
   const mhsItems: KontribItem[] = p.mahasiswa.map((m) => ({
     id: m.id,
     peran: m.peran,
-    name: m.mahasiswa?.name ?? "-",
+    name: m.nama ?? "-",
   }));
   const dosenOpts: Option[] = dosenOptions.map((d) => ({ value: d.nip, label: d.name }));
   const mhsOpts: Option[] = mahasiswaOptions.map((m) => ({ value: m.nim, label: m.name }));

@@ -37,6 +37,7 @@ export default async function PublikasiPage({
         rows={data}
         meta={meta}
         isAdmin={profile?.role === "admin"}
+        myProdiId={profile?.id_prodi ?? null}
         dosenOptions={dosenOptions}
         mahasiswaOptions={mahasiswaOptions}
         kontribActions={{

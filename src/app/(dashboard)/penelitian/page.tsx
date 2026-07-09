@@ -41,6 +41,7 @@ export default async function PenelitianPage({
         rows={data}
         meta={meta}
         isAdmin={profile?.role === "admin"}
+        myProdiId={profile?.id_prodi ?? null}
         basePath="/penelitian"
         dosenOptions={dosenOptions}
         mahasiswaOptions={mahasiswaOptions}

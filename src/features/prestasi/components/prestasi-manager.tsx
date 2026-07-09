@@ -11,6 +11,7 @@ import {
   type KontribItem,
   type Option,
 } from "@/features/kegiatan/components/kontrib-panel";
+import { canEditKegiatan } from "@/features/kegiatan/access";
 import { PrestasiForm } from "./prestasi-form";
 import {
   addPrestasiMahasiswa,
@@ -25,11 +26,14 @@ export function PrestasiManager({
   rows,
   meta,
   isAdmin,
+  myProdiId,
   mahasiswaOptions,
 }: {
   rows: PrestasiRow[];
   meta: ListMeta;
   isAdmin: boolean;
+  /** Current user's prodi (null for admin); gates the per-row "Ubah" button. */
+  myProdiId: number | null;
   mahasiswaOptions: { nim: number; name: string }[];
 }) {
   const router = useRouter();
@@ -42,7 +46,7 @@ export function PrestasiManager({
   const managingItems: KontribItem[] = (managingRow?.mahasiswa ?? []).map((m) => ({
     id: m.id,
     peran: m.peran,
-    name: m.mahasiswa?.name ?? "-",
+    name: m.nama ?? "-",
   }));
 
   const columns: Column<PrestasiRow>[] = [
@@ -80,16 +84,18 @@ export function PrestasiManager({
           >
             <Users className="size-4" />
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-9"
-            aria-label="Ubah prestasi"
-            title="Ubah data"
-            onClick={() => setEditing(row)}
-          >
-            <Pencil className="size-4" />
-          </Button>
+          {canEditKegiatan(isAdmin, myProdiId, row.ketua_prodi_id) && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-9"
+              aria-label="Ubah prestasi"
+              title="Ubah data"
+              onClick={() => setEditing(row)}
+            >
+              <Pencil className="size-4" />
+            </Button>
+          )}
           {isAdmin && (
             <DeleteButton
               onDelete={() => deletePrestasi(row.id)}

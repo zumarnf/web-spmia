@@ -21,7 +21,7 @@ type Detail = {
   juara: string | null;
   url_foto: string | null;
   url_sertifikat: string | null;
-  mahasiswa: { id: number; peran: string; mahasiswa: { name: string } | null }[];
+  mahasiswa: { id: number; peran: string; nama: string | null }[];
 };
 
 export default async function PrestasiDetailPage({
@@ -44,7 +44,7 @@ export default async function PrestasiDetailPage({
   const items: KontribItem[] = p.mahasiswa.map((m) => ({
     id: m.id,
     peran: m.peran,
-    name: m.mahasiswa?.name ?? "-",
+    name: m.nama ?? "-",
   }));
 
   return (

@@ -13,6 +13,7 @@ import {
 import { DeleteButton } from "@/components/common/delete-button";
 import { KegiatanForm } from "./kegiatan-form";
 import { KontribSection, type KontribActions } from "./kontrib-section";
+import { canEditKegiatan } from "../access";
 import type { KontribItem, Option } from "./kontrib-panel";
 import type { KegiatanRow } from "../data";
 import type { ActionResult } from "@/types/api";
@@ -22,6 +23,8 @@ type Props = {
   rows: KegiatanRow[];
   meta: import("@/types/api").ListMeta;
   isAdmin: boolean;
+  /** Current user's prodi (null for admin); gates the per-row "Ubah" button. */
+  myProdiId: number | null;
   basePath: string;
   dosenOptions: { nip: string; name: string }[];
   mahasiswaOptions: { nim: number; name: string }[];
@@ -32,8 +35,7 @@ type Props = {
 };
 
 function ketua(row: KegiatanRow): string {
-  const k = row.dosen.find((d) => d.peran === "ketua");
-  return k?.dosen?.name ?? "-";
+  return row.ketua_nama ?? "-";
 }
 
 function kontribCount(row: KegiatanRow): number {
@@ -44,6 +46,7 @@ export function KegiatanManager({
   rows,
   meta,
   isAdmin,
+  myProdiId,
   basePath,
   dosenOptions,
   mahasiswaOptions,
@@ -65,12 +68,12 @@ export function KegiatanManager({
   const managingDosen: KontribItem[] = (managingRow?.dosen ?? []).map((d) => ({
     id: d.id,
     peran: d.peran,
-    name: d.dosen?.name ?? "-",
+    name: d.nama ?? "-",
   }));
   const managingMhs: KontribItem[] = (managingRow?.mahasiswa ?? []).map((m) => ({
     id: m.id,
     peran: m.peran,
-    name: m.mahasiswa?.name ?? "-",
+    name: m.nama ?? "-",
   }));
 
   const filters: FilterOption[] = [
@@ -121,16 +124,18 @@ export function KegiatanManager({
           >
             <Users className="size-4" />
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-9"
-            aria-label={`Ubah ${row.judul}`}
-            title="Ubah data"
-            onClick={() => setEditing(row)}
-          >
-            <Pencil className="size-4" />
-          </Button>
+          {canEditKegiatan(isAdmin, myProdiId, row.ketua_prodi_id) && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-9"
+              aria-label={`Ubah ${row.judul}`}
+              title="Ubah data"
+              onClick={() => setEditing(row)}
+            >
+              <Pencil className="size-4" />
+            </Button>
+          )}
           {isAdmin && (
             <DeleteButton onDelete={() => onDelete(row.id)} itemLabel={row.judul} />
           )}

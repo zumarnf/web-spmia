@@ -41,6 +41,7 @@ export default async function PengabdianPage({
         rows={data}
         meta={meta}
         isAdmin={profile?.role === "admin"}
+        myProdiId={profile?.id_prodi ?? null}
         basePath="/pengabdian"
         dosenOptions={dosenOptions}
         mahasiswaOptions={mahasiswaOptions}
