@@ -7,11 +7,16 @@ is safe to publish.
 
 | File | Purpose |
 | --- | --- |
-| `migrations/0001_init.sql` | **Full setup in one file:** enums, tables, indexes, single-ketua partial unique indexes, "ketua" search views (with `security_invoker`), the `auth_role()` helper, Row Level Security policies, and the cross-table single-ketua trigger. |
+| `migrations/0001_init.sql` | **Everything in one file, single run:** enums, tables (incl. publikasi contributors), indexes, single-ketua rules, `updated_at` auto-refresh, "ketua" search views (with `security_invoker`), helper functions (`auth_role`, `auth_prodi`, `kegiatan_owned`), **per-prodi Row Level Security**, the auto-provision `profiles` trigger (`on_auth_user_created`), and the cross-table single-ketua trigger. |
 | `seed.sql` | Reference/demo data (re-runnable; truncates then inserts). |
 
 `0001_init.sql` is meant for a **fresh/empty database** and applies everything in
-a single run.
+a single run — paste it into the SQL Editor and Run once.
+
+> ⚠️ **Per-prodi RLS:** `prodi`-role users are isolated to their own program
+> studi; kegiatan ownership is derived from the ketua's prodi (a ketua-less
+> kegiatan is visible to all until a ketua is set). This policy set is
+> non-trivial — test it against a dev project before trusting it in production.
 
 ## Applying the schema
 
@@ -34,8 +39,12 @@ supabase db seed          # optional: loads seed.sql
 
 ## Notes
 
-- **App users** are provisioned via Supabase Auth plus a matching row in
-  `profiles` (there is no auto-insert trigger). A user without a `profiles` row
-  cannot access the dashboard.
+- **App users** are provisioned via Supabase Auth. The `on_auth_user_created`
+  trigger (in `0001_init.sql`) auto-creates a matching `profiles` row for every
+  new auth user with the least-privileged role (`prodi`); promote to `admin`
+  manually. A user without a `profiles` row cannot access the dashboard.
+  **Keep Supabase Auth sign-ups disabled** (admin-only provisioning) unless
+  self-service registration is intended — otherwise anyone who signs up gets a
+  `prodi` profile automatically.
 - `seed.sql` is **destructive** — it truncates every domain table before
   inserting. Use it only in development.

@@ -3,12 +3,22 @@
 -- FKs are resolved via subselects so it never depends on hardcoded ids.
 -- Note: app users are provisioned via Supabase Auth + a matching profiles row.
 
+-- IMPORTANT: `profiles.id_prodi` references `prodis`, so `truncate prodis CASCADE`
+-- would also wipe every user in `profiles`. To keep app users intact we detach
+-- them first, truncate the domain tables (NOT prodis), then clear prodis with a
+-- plain DELETE (no cascade) and restart its identity sequence by hand.
+update profiles set id_prodi = null;
+
 truncate
-  prodis, dosens, mahasiswas, jabatans, history_jabatans,
+  dosens, mahasiswas, jabatans, history_jabatans,
   penelitians, penelitian_dosens, penelitian_mahasiswas,
   pengabdians, pengabdian_dosens, pengabdian_mahasiswas,
-  prestasis, prestasi_mahasiswas, publikasis
+  prestasis, prestasi_mahasiswas,
+  publikasis, publikasi_dosens, publikasi_mahasiswas
   restart identity cascade;
+
+delete from prodis;
+alter table prodis alter column id restart with 1;
 
 insert into prodis (name, kode_prodi) values
   ('Teknik Informatika', 'TIF'),
