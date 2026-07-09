@@ -51,6 +51,8 @@ next-env.d.ts
 /plans
 /.claude
 skills-lock.json
+/learn
+/docs
 
 # NOTE: /supabase (migrations + seed.sql) IS tracked on purpose — it is the
 # database schema and contains no secrets.
