@@ -13,6 +13,12 @@ vi.mock("@/lib/monitoring/report", () => ({
   reportError: (e: unknown, c: unknown) => reportError(e, c),
 }));
 
+// redirect() halts execution by throwing NEXT_REDIRECT; mimic that in tests.
+const redirect = vi.fn((p: string) => {
+  throw new Error(`NEXT_REDIRECT:${p}`);
+});
+vi.mock("next/navigation", () => ({ redirect: (p: string) => redirect(p) }));
+
 import { withAction } from "./action";
 
 describe("withAction", () => {
@@ -94,5 +100,21 @@ describe("withAction", () => {
       ok: false,
       message: "Akses ditolak. Hanya admin yang diizinkan.",
     });
+    expect(redirect).not.toHaveBeenCalled();
+  });
+
+  it("redirects to /login when the guard reports UNAUTHENTICATED", async () => {
+    await expect(
+      withAction({
+        guard: async () => {
+          throw new Error("UNAUTHENTICATED");
+        },
+        success: "ok",
+        run: async () => ({ ok: true, data: null }),
+      }),
+    ).rejects.toThrow("NEXT_REDIRECT:/login");
+
+    expect(redirect).toHaveBeenCalledWith("/login");
+    expect(reportError).toHaveBeenCalledOnce();
   });
 });

@@ -1,5 +1,6 @@
 import "server-only";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { toActionError } from "@/lib/errors";
 import { reportError } from "@/lib/monitoring/report";
@@ -44,6 +45,12 @@ export async function withAction<TData = null>(
   } catch (error) {
     // Capture for monitoring (ignored control-flow signals are filtered inside).
     reportError(error, { source: "server-action" });
+    // Dead session: bounce to /login instead of a toast the user can't act on.
+    // redirect() throws NEXT_REDIRECT, which Next propagates to the client
+    // (complements the client-side SessionWatcher for the post-submit case).
+    if (error instanceof Error && error.message === "UNAUTHENTICATED") {
+      redirect("/login");
+    }
     return toActionError(error);
   }
 }
