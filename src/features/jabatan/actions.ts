@@ -20,6 +20,26 @@ export async function createHistoryJabatan(input: unknown): Promise<ActionResult
   });
 }
 
+export async function updateHistoryJabatan(
+  id: number,
+  input: unknown,
+): Promise<ActionResult<null>> {
+  return withAction({
+    guard: requireUser,
+    revalidate: PATH,
+    success: "Riwayat jabatan diperbarui",
+    run: async (supabase) => {
+      const values = historyJabatanSchema.parse(input);
+      const { error } = await supabase
+        .from("history_jabatans")
+        .update(values)
+        .eq("id", id);
+      if (error) return { ok: false, message: "Gagal memperbarui data" };
+      return { ok: true, data: null };
+    },
+  });
+}
+
 export async function deleteHistoryJabatan(id: number): Promise<ActionResult<null>> {
   return withAction({
     guard: requireAdmin,

@@ -1,7 +1,7 @@
 "use client";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus } from "lucide-react";
+import { Pencil, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -9,7 +9,11 @@ import { Modal } from "@/components/ui/modal";
 import { Field } from "@/components/common/field";
 import { DataTable, type Column } from "@/components/data-table/data-table";
 import { DeleteButton } from "@/components/common/delete-button";
-import { createHistoryJabatan, deleteHistoryJabatan } from "../actions";
+import {
+  createHistoryJabatan,
+  deleteHistoryJabatan,
+  updateHistoryJabatan,
+} from "../actions";
 import type { HistoryRow } from "../data";
 import type { ListMeta } from "@/types/api";
 
@@ -28,18 +32,36 @@ export function HistoryManager({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  // Id of the row being edited, or null when creating a new one.
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [nip, setNip] = useState("");
   const [jabatan, setJabatan] = useState("");
   const [pending, startTransition] = useTransition();
 
+  const openCreate = () => {
+    setEditingId(null);
+    setNip("");
+    setJabatan("");
+    setOpen(true);
+  };
+
+  const openEdit = (row: HistoryRow) => {
+    setEditingId(row.id);
+    setNip(row.nip_dosen);
+    setJabatan(String(row.id_jabatan));
+    setOpen(true);
+  };
+
   const submit = () => {
     startTransition(async () => {
-      const result = await createHistoryJabatan({ nip_dosen: nip, id_jabatan: jabatan });
+      const input = { nip_dosen: nip, id_jabatan: jabatan };
+      const result =
+        editingId === null
+          ? await createHistoryJabatan(input)
+          : await updateHistoryJabatan(editingId, input);
       if (result.ok) {
         toast.success(result.message);
         setOpen(false);
-        setNip("");
-        setJabatan("");
         router.refresh();
       } else {
         toast.error(result.message);
@@ -54,14 +76,26 @@ export function HistoryManager({
     {
       key: "actions",
       header: "",
-      className: "w-16 text-right",
-      cell: (row) =>
-        isAdmin ? (
-          <DeleteButton
-            onDelete={() => deleteHistoryJabatan(row.id)}
-            itemLabel="riwayat jabatan"
-          />
-        ) : null,
+      className: "w-24 text-right",
+      cell: (row) => (
+        <div className="flex justify-end gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Ubah riwayat jabatan"
+            title="Ubah"
+            onClick={() => openEdit(row)}
+          >
+            <Pencil className="size-4" />
+          </Button>
+          {isAdmin && (
+            <DeleteButton
+              onDelete={() => deleteHistoryJabatan(row.id)}
+              itemLabel="riwayat jabatan"
+            />
+          )}
+        </div>
+      ),
     },
   ];
 
@@ -74,12 +108,16 @@ export function HistoryManager({
         rowKey={(r) => r.id}
         searchPlaceholder="Cari…"
         actions={
-          <Button onClick={() => setOpen(true)}>
+          <Button onClick={openCreate}>
             <Plus className="size-4" /> Tambah Riwayat
           </Button>
         }
       />
-      <Modal open={open} onClose={() => setOpen(false)} title="Tambah Riwayat Jabatan">
+      <Modal
+        open={open}
+        onClose={() => setOpen(false)}
+        title={editingId === null ? "Tambah Riwayat Jabatan" : "Ubah Riwayat Jabatan"}
+      >
         <div className="flex flex-col gap-4">
           <Field id="nip_dosen" label="Dosen">
             <Select id="nip_dosen" value={nip} onChange={(e) => setNip(e.target.value)}>

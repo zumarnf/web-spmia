@@ -6,6 +6,8 @@ import type { Jabatan } from "@/types/database.types";
 
 export type HistoryRow = {
   id: number;
+  nip_dosen: string;
+  id_jabatan: number;
   dosen: { name: string } | null;
   jabatan: { jabatan: string; sub_jabatan: string } | null;
 };
@@ -28,9 +30,10 @@ export async function getHistoryList(
   const supabase = await createClient();
   const { data, count } = await supabase
     .from("history_jabatans")
-    .select("id, dosen:dosens(name), jabatan:jabatans(jabatan, sub_jabatan)", {
-      count: "exact",
-    })
+    .select(
+      "id, nip_dosen, id_jabatan, dosen:dosens(name), jabatan:jabatans(jabatan, sub_jabatan)",
+      { count: "exact" },
+    )
     .order("id", { ascending: p.order === "asc" })
     .range(p.from, p.to);
   return {
